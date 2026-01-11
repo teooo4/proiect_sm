@@ -1,0 +1,71 @@
+#include <SPI.h>
+#include <MFRC522.h>
+#include <Servo.h>
+
+#define SS_PIN 10
+#define RST_PIN 9
+#define SERVO_PIN 3
+#define LED_G 7
+#define LED_R 6
+
+MFRC522 rfid(SS_PIN, RST_PIN);
+Servo barrier;
+
+void setup() {
+  Serial.begin(9600);
+  SPI.begin();
+  rfid.PCD_Init();
+  barrier.attach(SERVO_PIN);
+  barrier.write(0);
+  
+  pinMode(LED_G, OUTPUT);
+  pinMode(LED_R, OUTPUT);
+  digitalWrite(LED_R, HIGH);
+}
+
+void loop() {
+  if (Serial.available() > 0) 
+  {
+    char comanda = Serial.read();
+    if (comanda == '1') 
+    {
+      deschideBariera();
+    } else if (comanda == '0') 
+    {
+      accesInterzis();
+    }
+  }
+  if (!rfid.PCC_IsNewCardPresent() || !rfid.PCC_ReadCardSerial())
+    return;
+
+  String uid = "";
+  for (byte i = 0; i < rfid.uid.size; i++) 
+  {
+    uid.concat(String(rfid.uid.uidByte[i] <0x10 ? "0": ""));
+    uid.concat(String(rfid.uid.uidByte[i], HEX));
+  }
+  uid.toUpperCase();
+  Serial.println(uid);
+  
+  rfid.PCC_HaltA();
+  rfid.PCD_StopCrypto1();
+}
+
+void deschideBariera() 
+{
+  digitalWrite(LED_R, LOW);
+  digitalWrite(LED_G, HIGH);
+  barrier.write(90);
+  delay(3000);
+  barrier.write(0);
+  digitalWrite(LED_G, LOW);
+  digitalWrite(LED_R, HIGH);
+}
+
+void accesInterzis() 
+{
+  digitalWrite(LED_R, LOW); delay(200);
+  digitalWrite(LED_R, HIGH); delay(200);
+  digitalWrite(LED_R, LOW); delay(200);
+  digitalWrite(LED_R, HIGH);
+}
